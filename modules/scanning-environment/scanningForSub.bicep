@@ -159,7 +159,7 @@ module scanningKeyVaultPrivateEndpoint 'scanningKeyVaultPrivateEndpoint.bicep' =
     name: '${resourceNamePrefix}cs-scanning-vault-pe${environment}-${location}${resourceNameSuffix}'
     scope: scanningResourceGroup
     params: {
-      vaultSubnetId: scanningRegion[index].outputs.vaultSubnetId
+      scanningKeyVaultSubnetId: scanningRegion[index].outputs.clonesSubnetId
       scanningKeyVaultName: scanningResourceGroupModule.outputs.scanningKeyVaultName
       resourceNamePrefix: resourceNamePrefix
       resourceNameSuffix: resourceNameSuffix

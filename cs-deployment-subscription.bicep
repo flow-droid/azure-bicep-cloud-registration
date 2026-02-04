@@ -104,7 +104,7 @@ param agentlessScanningDeployNatGateway bool = true
 var subscriptions = union(subscriptionIds, csInfraSubscriptionId == '' ? [] : [csInfraSubscriptionId]) // remove duplicated values
 var environment = length(env) > 0 ? '-${env}' : env
 var shouldDeployLogIngestion = enableRealTimeVisibility
-var shouldDeployScanningEnvironment = enableDspm && (!empty(dspmLocationsPerSubscription) || !empty(dspmLocations))
+var shouldDeployScanningEnvironment = enableDspm
 var validatedFalconClientID = (shouldDeployLogIngestion || shouldDeployScanningEnvironment) && empty(falconClientId)
   ? fail('"falconClientId" is required when real-time visibility and detection or DSPM are enabled, please specify it in parameters.bicepparam')
   : falconClientId
@@ -117,14 +117,20 @@ var validatedResourceNamePrefix = length(resourceNamePrefix) + length(resourceNa
 var validatedResourceNameSuffix = length(resourceNamePrefix) + length(resourceNameSuffix) > 10
   ? fail('Combined prefix and suffix length must not exceed 10 characters')
   : resourceNameSuffix
-var scanningEnvironmentLocationsPerSubscriptionMap = !empty(dspmLocationsPerSubscription)
-  ? map(items(dspmLocationsPerSubscription), entity => {
+var validatedDspmLocationsPerSubscription = enableDspm && (empty(dspmLocationsPerSubscription) && empty(dspmLocations))
+  ? fail('either "dspmLocationsPerSubscription" or "dspmLocations" must be non-empty if DSPM is enabled')
+  : dspmLocationsPerSubscription
+var validatedDspmLocations = enableDspm && (empty(dspmLocationsPerSubscription) && empty(dspmLocations))
+  ? fail('either "dspmLocationsPerSubscription" or "dspmLocations" must be non-empty if DSPM is enabled')
+  : dspmLocations
+var scanningEnvironmentLocationsPerSubscriptionMap = !empty(validatedDspmLocationsPerSubscription)
+  ? map(items(validatedDspmLocationsPerSubscription), entity => {
       subscriptionId: entity.key
       locations: entity.value
     })
   : map(subscriptions, subscriptionId => {
       subscriptionId: subscriptionId
-      locations: dspmLocations
+      locations: validatedDspmLocations
     })
 
 /* Resources used across modules
@@ -152,9 +158,9 @@ module infraResourceGroup 'modules/common/resourceGroup.bicep' = if (shouldDeplo
   }
 }
 
-var subscriptionIdsWithResourceGroup = empty(dspmLocationsPerSubscription)
+var subscriptionIdsWithResourceGroup = empty(validatedDspmLocationsPerSubscription)
   ? subscriptions
-  : objectKeys(dspmLocationsPerSubscription)
+  : objectKeys(validatedDspmLocationsPerSubscription)
 module perSubscriptionResourceGroups 'modules/cs-resource-groups-sub.bicep' = if (shouldDeployScanningEnvironment) {
   name: '${validatedResourceNamePrefix}cs-per-subscription-rg${environment}${validatedResourceNameSuffix}'
   params: {

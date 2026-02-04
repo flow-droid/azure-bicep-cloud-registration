@@ -10,7 +10,7 @@ targetScope = 'resourceGroup'
 param location string
 
 @description('Subnet ID to use for KeyVault Private Endpoint.')
-param vaultSubnetId string
+param scanningKeyVaultSubnetId string
 
 @description('Name of KeyVault utilized by data scanning.')
 param scanningKeyVaultName string
@@ -31,12 +31,9 @@ param env string
 param tags object
 
 /* Variables */
-var vaultIPAddress = '10.1.3.30'
-
 var environment = length(env) > 0 ? '-${env}' : env
-var vaultPrivateEndpointName = '${resourceNamePrefix}pep-csscanning-vault${environment}-${location}${resourceNameSuffix}'
-var vaultPrivateLinkServiceConnectionName = '${resourceNamePrefix}plsc-csscanning-vault${environment}-${location}${resourceNameSuffix}'
-var vaultIpConfigurationName = '${resourceNamePrefix}ipconfig-csscanning${environment}-${location}${resourceNameSuffix}'
+var vaultPrivateEndpointName = '${resourceNamePrefix}pep-csscanning-keyvault${environment}-${location}${resourceNameSuffix}'
+var vaultPrivateLinkServiceConnectionName = '${resourceNamePrefix}plsc-csscanning-keyvault${environment}-${location}${resourceNameSuffix}'
 
 resource vaultPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-07-01' = {
   location: location
@@ -58,18 +55,8 @@ resource vaultPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-07-01' = 
         }
       }
     ]
-    ipConfigurations: [
-      {
-        name: vaultIpConfigurationName
-        properties: {
-          groupId: 'vault'
-          memberName: 'default'
-          privateIPAddress: vaultIPAddress
-        }
-      }
-    ]
     subnet: {
-      id: vaultSubnetId
+      id: scanningKeyVaultSubnetId
     }
   }
   tags: tags

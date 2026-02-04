@@ -112,7 +112,13 @@ var managementGroups = union(
 ) // remove duplicated values
 var environment = length(env) > 0 ? '-${env}' : env
 var shouldDeployLogIngestion = enableRealTimeVisibility
-var shouldDeployScanningEnvironment = enableDspm && (!empty(dspmLocationsPerSubscription) || !empty(dspmLocations))
+var validatedDspmLocationsPerSubscription = enableDspm && (empty(dspmLocationsPerSubscription) && empty(dspmLocations))
+  ? fail('either "dspmLocationsPerSubscription" or "dspmLocations" must be non-empty if DSPM is enabled')
+  : dspmLocationsPerSubscription
+var validatedDspmLocations = enableDspm && (empty(dspmLocationsPerSubscription) && empty(dspmLocations))
+  ? fail('either "dspmLocationsPerSubscription" or "dspmLocations" must be non-empty if DSPM is enabled')
+  : dspmLocations
+var shouldDeployScanningEnvironment = enableDspm
 var validatedFalconClientID = (shouldDeployLogIngestion || shouldDeployScanningEnvironment) && empty(falconClientId)
   ? fail('"falconClientId" is required when real-time visibility and detection is enabled, please specify it in parameters.bicepparam')
   : falconClientId
@@ -189,9 +195,9 @@ module deploymentScope 'modules/cs-deployment-scope-mg.bicep' = if (shouldResolv
   }
 }
 
-var subscriptionIdsWithResourceGroup = !empty(dspmLocationsPerSubscription)
-  ? objectKeys(dspmLocationsPerSubscription)
-  : deploymentScope.outputs.allSubscriptions
+var subscriptionIdsWithResourceGroup = !empty(validatedDspmLocationsPerSubscription)
+  ? objectKeys(validatedDspmLocationsPerSubscription)
+  : deploymentScope!!.outputs.allSubscriptions
 module perSubscriptionResourceGroups 'modules/cs-resource-groups-mg.bicep' = if (shouldDeployScanningEnvironment) {
   name: '${validatedResourceNamePrefix}cs-per-subscription-rg${environment}${validatedResourceNameSuffix}'
   params: {
@@ -232,14 +238,14 @@ module logIngestion 'modules/cs-log-ingestion-mg.bicep' = if (shouldDeployLogIng
   ]
 }
 
-var scanningEnvironmentLocationsPerSubscriptionMap = !empty(dspmLocationsPerSubscription)
-  ? map(items(dspmLocationsPerSubscription), entity => {
+var scanningEnvironmentLocationsPerSubscriptionMap = !empty(validatedDspmLocationsPerSubscription)
+  ? map(items(validatedDspmLocationsPerSubscription), entity => {
       subscriptionId: entity.key
       locations: entity.value
     })
-  : map(deploymentScope.outputs.allSubscriptions, subscriptionId => {
+  : map(deploymentScope!!.outputs.allSubscriptions, subscriptionId => {
       subscriptionId: subscriptionId
-      locations: dspmLocations
+      locations: validatedDspmLocations
     })
 module scanningEnvironment 'modules/cs-scanning-mg.bicep' = if (shouldDeployScanningEnvironment) {
   name: '${validatedResourceNamePrefix}cs-scanning-mg${environment}${validatedResourceNameSuffix}'
