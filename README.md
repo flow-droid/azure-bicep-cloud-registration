@@ -42,7 +42,7 @@ The Bicep templates perform the following actions:
       - When `logIngestionSettings.activityLogSettings.deployRemediationPolicy` is set to `true`, create an Azure policy definition and management group assignment that will create Azure activity log diagnostic settings for new subscriptions to forward activity logs to the newly-created event hub.
 - If the `enableDspm` parameter is set to true:
    - If `dspmLocationsPerSubscription` is specified, per subscription from the map, otherwise per subscription within specified registration scope:
-      - Create a resource group with Key vault, Managed Identity and Private DNS zone in global resources location.
+      - Create a resource group with Key vault and Managed Identity in global resources location.
       - Create and assign a custom Scanning access role at subscription scope.
       - Create and assign a custom Scanning access role at resource group scope.
       - Create and assign a custom Scanner role at a subscription scope.
