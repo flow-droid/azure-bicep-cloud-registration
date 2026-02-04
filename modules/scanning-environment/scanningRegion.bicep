@@ -31,8 +31,6 @@ param agentlessScanningDeployNatGateway bool = true
 var vnetAddressPrefix = '10.1.0.0/22'
 var clonesSubnetPrefix = '10.1.1.0/24'
 var scannersSubnetPrefix = '10.1.2.0/24'
-var vaultSubnetPrefix = '10.1.3.0/24'
-var keyVaultPrivateZone = 'privatelink.vaultcore.azure.net'
 
 var environment = length(env) > 0 ? '-${env}' : env
 var scannersPublicIpName = '${resourceNamePrefix}pip-csscanning-scanners${environment}-${location}${resourceNameSuffix}'
@@ -40,9 +38,7 @@ var scannersNatGatewayName = '${resourceNamePrefix}ng-csscanning-scanners${envir
 var scanningNsgName = '${resourceNamePrefix}nsg-csscanning${environment}-${location}${resourceNameSuffix}'
 var scanningVnetName = '${resourceNamePrefix}vnet-csscanning${environment}-${location}${resourceNameSuffix}'
 var clonesSubnetName = '${resourceNamePrefix}snet-csscanning-clones${environment}-${location}${resourceNameSuffix}'
-var vaultSubnetName = '${resourceNamePrefix}snet-csscanning-vault${environment}-${location}${resourceNameSuffix}'
 var scannersSubnetName = '${resourceNamePrefix}snet-csscanning-scanners${environment}-${location}${resourceNameSuffix}'
-var vaultVirtualLinkName = '${keyVaultPrivateZone}/${resourceNamePrefix}vnl-csscanning-vault${environment}-${location}${resourceNameSuffix}'
 
 resource scannersPublicIp 'Microsoft.Network/publicIPAddresses@2024-07-01' = if (agentlessScanningDeployNatGateway) {
   location: location
@@ -102,26 +98,6 @@ resource clonesSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-07-01' = {
   }
 }
 
-resource vaultSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-07-01' = {
-  parent: scanningVnet
-  name: vaultSubnetName
-  properties: {
-    addressPrefixes: [vaultSubnetPrefix]
-    defaultOutboundAccess: false
-    serviceEndpoints: [
-      {
-        service: 'Microsoft.KeyVault'
-      }
-    ]
-    networkSecurityGroup: {
-      id: scanningNsg.id
-    }
-  }
-  dependsOn: [
-    clonesSubnet // subnets cannot be deployed in parallel
-  ]
-}
-
 resource scannersSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-07-01' = {
   parent: scanningVnet
   name: scannersSubnetName
@@ -138,20 +114,8 @@ resource scannersSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-07-01' =
     }
   }
   dependsOn: [
-    vaultSubnet // subnets cannot be deployed in parallel
+    clonesSubnet // subnets cannot be deployed in parallel
   ]
 }
 
-resource vaultVirtualLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = {
-  location: 'global'
-  name: vaultVirtualLinkName
-  properties: {
-    registrationEnabled: true
-    virtualNetwork: {
-      id: scanningVnet.id
-    }
-  }
-  tags: tags
-}
-
-output vaultSubnetId string = vaultSubnet.id
+output clonesSubnetId string = clonesSubnet.id

@@ -34,11 +34,9 @@ param tags object
 param agentlessScanningDeployNatGateway bool = true
 
 /* Variables */
-var vaultIPAddress = '10.1.3.30'
-
 var environment = length(env) > 0 ? '-${env}' : env
 // NOTE: key vault has name limit constraints, so prefix and suffix are omitted 
-var keyVaultName = 'kv-cs-${uniqueString(resourceGroup().id, 'CrowdStrikeScanningKeyVault')}'
+var keyVaultName = 'kv-cs-${uniqueString(resourceGroup().id, 'CrowdStrikeScanningKeyVault', 'v2')}'
 var managedIdentityName = '${resourceNamePrefix}id-csscanning${environment}${resourceNameSuffix}'
 var clientCredentialsName = 'client-credentials'
 var resourceGroupAccessCustomRole = {
@@ -166,12 +164,6 @@ resource managedIdentityReaderRoleAssignment 'Microsoft.Authorization/roleAssign
   }
 }
 
-resource scanningKeyVaultPrivateZone 'Microsoft.Network/privateDnsZones@2024-06-01' = {
-  location: 'global'
-  name: 'privatelink.vaultcore.azure.net'
-  tags: tags
-}
-
 resource scanningKeyVault 'Microsoft.KeyVault/vaults@2024-11-01' = {
   location: resourceGroup().location
   name: keyVaultName
@@ -197,25 +189,18 @@ resource scanningKeyVault 'Microsoft.KeyVault/vaults@2024-11-01' = {
 }
 
 resource managedIdentityVaultRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(subscription().id, resourceGroup().id, builtinKeyVaultSecretsUserRole.id, scannerManagedIdentity.id)
+  name: guid(
+    subscription().id,
+    resourceGroup().id,
+    builtinKeyVaultSecretsUserRole.id,
+    scannerManagedIdentity.id,
+    scanningKeyVault.name
+  )
   scope: scanningKeyVault
   properties: {
     roleDefinitionId: builtinKeyVaultSecretsUserRole.id
     principalId: scannerManagedIdentity.properties.principalId
     principalType: 'ServicePrincipal'
-  }
-}
-
-resource scanningKeyVaultDnsRecord 'Microsoft.Network/privateDnsZones/A@2024-06-01' = {
-  parent: scanningKeyVaultPrivateZone
-  name: scanningKeyVault.name
-  properties: {
-    aRecords: [
-      {
-        ipv4Address: vaultIPAddress
-      }
-    ]
-    ttl: 10
   }
 }
 
