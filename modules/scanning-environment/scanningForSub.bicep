@@ -71,6 +71,7 @@ resource subscriptionAccessRole 'Microsoft.Authorization/roleDefinitions@2022-04
 
           // ============ Validation ============
           'Microsoft.Authorization/roleAssignments/read'
+          'Microsoft.Authorization/policyDefinitions/read'
         ]
         notActions: []
         dataActions: []
